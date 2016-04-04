@@ -19,7 +19,7 @@ def maybe_download(filepath, url):
       filepath (str): the path to check.
       url (str): the url which we will attempt to retrieve if the file is not
         present.
-    
+
     Returns:
       str: the path to the file
     """
@@ -27,12 +27,9 @@ def maybe_download(filepath, url):
     # so that it is a bit more flexible
     if not os.path.exists(filepath):
         # dl into a tempfile in case it faoils
-        with tempfile.NamedTemporaryFile as tmpfile:
+        with tempfile.NamedTemporaryFile() as tmpfile:
             temp_file_name = tmpfile.name
             urllib.request.urlretrieve(url, temp_file_name)
             shutil.copy(temp_file_name, filepath)
-            with open(filepath) as f:
-                size = f.size()
-            print('Downloaded {}, ({} bytes)'.format(filename, size))
+            print('Downloaded {}'.format(filepath))
     return filepath
-

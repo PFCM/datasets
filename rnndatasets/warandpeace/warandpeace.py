@@ -14,7 +14,7 @@ import numpy as np
 from six.moves import xrange
 from six.moves import urllib
 
-from .. import helpers
+from rnndatasets import helpers
 
 
 FILENAME = 'warandpeace.txt'
