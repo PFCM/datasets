@@ -1,0 +1,24 @@
+"""Quick tests for the functions around the war and peace data.
+Not really intended to be thorough, because this stuff is pretty
+rough and ready.
+
+Note that these will test the data downloads, so requires internet.
+Also will leave the dataset lying around, so be aware.
+"""
+
+import os
+import unittest
+
+import warandpeace
+
+
+class WarAndPeaceTests(unittest.TestCase):
+    """quick tests, make sure everything seems to be in order"""
+
+    def test_get_big_string(self):
+        """make sure we can get the data in its rawest form"""
+        self.assertIsNotNone(warandpeace._get_big_string())
+
+    def test_get_vocab(self):
+        """make sure we get something without an error"""
+        self.assertIsNotNone(warandpeace.get_vocab('char'))
