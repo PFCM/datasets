@@ -33,7 +33,7 @@ def _get_big_string():
     """gets war and peace as a big string"""
     if not hasattr(_get_big_string, 'BIG_STRING'):
         with open(helpers.maybe_download(
-                _datapath(), URL)) as datafile:
+                _datapath(), URL), encoding='utf-8') as datafile:
             _get_big_string.BIG_STRING = datafile.read()
     return _get_big_string.BIG_STRING
 
@@ -67,7 +67,7 @@ def _gen_vocab(data, splitter, filename, most_common=None, repeat_thresh=None):
     symbols.append(['<GO>', 0])
     vocab = {symb[0]: i for i, symb in enumerate(symbols)}
     # now write it to the file
-    with open(filename, 'w') as f:
+    with open(filename, 'w', encoding='utf-8') as f:
         csvwrite = csv.writer(f)
         for sym in vocab:
             csvwrite.writerow([sym, vocab[sym]])
@@ -77,7 +77,7 @@ def _gen_vocab(data, splitter, filename, most_common=None, repeat_thresh=None):
 def _load_vocab(filename):
     """reads in a vocab file"""
     vocab = {}
-    with open(filename, 'r', newline='') as f:
+    with open(filename, 'r', newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
             vocab[row[0]] = row[1]
