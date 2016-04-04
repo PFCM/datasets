@@ -1,0 +1,13 @@
+language: python
+python:
+    - "2.7"
+    - "3.4"
+    - "3.5"
+
+# get ready to go
+install: "pip install --user -r requirements.txt"
+
+# run the "tests"
+script: nosetests
+
+# for now the default notifications are fine
