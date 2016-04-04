@@ -1,0 +1,6 @@
+__pycache__
+.python-version
+*~
+# any folders called data we will ignore
+warandpeace.txt
+data
