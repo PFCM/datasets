@@ -137,4 +137,11 @@ def get_char_iter(sequence_length, batch_size):
     # w & p isn't huge, so the first thing we will do is just pull
     # the lot into memory
     wp_seq = _get_sequence('char')
-
+    num_chars = len(wp_seq)
+    # this is potentially a little bit slow
+    num_batches = num_chars // (sequence_length * batch_size)
+    print('enough data for {} batches'.format(num_batches))
+    for start_pos in xrange(
+    for seq_pos in xrange(sequence_length):
+        for inbatch_num in xrange(batch_size):
+            
