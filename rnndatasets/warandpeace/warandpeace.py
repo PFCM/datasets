@@ -18,7 +18,7 @@ from rnndatasets import helpers
 
 
 FILENAME = 'warandpeace.txt'
-URL = 'http://www.gutenberg.org/ebooks/2600.txt.utf-8'
+URL = 'http://www.gutenberg.myebook.bg/2/6/0/2600/2600.txt'
 
 
 def _datapath():
