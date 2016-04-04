@@ -13,6 +13,7 @@ import numpy as np
 
 from six.moves import xrange
 from six.moves import urllib
+from io import open
 
 from rnndatasets import helpers
 
