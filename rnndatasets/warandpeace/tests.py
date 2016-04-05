@@ -27,3 +27,10 @@ class WarAndPeaceTests(unittest.TestCase):
     def test_get_vocab(self):
         """make sure we get something without an error"""
         self.assertIsNotNone(warandpeace.get_vocab('char'))
+
+    def test_iterator(self):
+        """see if we can iterate war and peace in batches"""
+        for batch in warandpeace.get_char_iter(10, 10):
+            self.assertEqual(len(batch), 10)
+            for item in batch:
+                self.assertEqual(item.shape, (10,))

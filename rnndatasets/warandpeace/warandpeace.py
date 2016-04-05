@@ -8,6 +8,7 @@ from __future__ import print_function
 import os
 import collections
 import csv
+import itertools
 
 import numpy as np
 
@@ -138,12 +139,19 @@ def get_char_iter(sequence_length, batch_size):
     # first we actually have to load the data
     # w & p isn't huge, so the first thing we will do is just pull
     # the lot into memory
-    wp_seq = _get_sequence('char')
+    wp_seq, _ = _get_sequence('char')
     num_chars = len(wp_seq)
     # this is potentially a little bit slow
     num_batches = num_chars // (sequence_length * batch_size)
     print('enough data for {} batches'.format(num_batches))
-    for start_pos in xrange(num_batches):
-        for seq_pos in xrange(sequence_length):
-            for inbatch_num in xrange(batch_size):
-                pass
+    for seq_start in xrange(0, sequence_length, sequence_length*batch_size):
+        # gives us the starting position of the sequence
+        batch = []
+        for seq_pos in xrange(seq_start, seq_start + sequence_length):
+            # for each position in the final sequence
+            # grab a slice of batch_size many indices each seq_length apart
+            batch.append(
+                np.array(
+                    wp_seq[seq_pos:seq_pos+batch_size*sequence_length:sequence_length],
+                    dtype=np.int32))
+        yield batch
