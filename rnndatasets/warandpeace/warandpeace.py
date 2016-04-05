@@ -124,17 +124,22 @@ def _get_sequence(level):
     return seq, vocab
 
 
-def get_char_iter(sequence_length, batch_size):
+def get_char_iter(sequence_length, batch_size, report_progress=False):
     """Gets an iterator to batches of war and peace data.
 
     Args:
         sequence_length (int): the length of each chunk. This the maximum
             length you want to unroll your net for.
         batch_size (int): how many sequences to return at once.
+        report_progress (bool): whether or not to report back about
+            how far through the data you're getting.
 
     yields:
         list of `sequence_length` numpy int32 arrays, each with shape
             `[batch_size]`
+        if `report_progress` is true, returns a tuple with the above as
+            the second element and the fraction of progress through
+            the data the first.
     """
     # first we actually have to load the data
     # w & p isn't huge, so the first thing we will do is just pull
@@ -143,15 +148,19 @@ def get_char_iter(sequence_length, batch_size):
     num_chars = len(wp_seq)
     # this is potentially a little bit slow
     num_batches = num_chars // (sequence_length * batch_size)
-    print('enough data for {} batches'.format(num_batches))
-    for seq_start in xrange(0, sequence_length, sequence_length*batch_size):
+    #print('enough data for {} batches'.format(num_batches))
+    num_consumed = 0
+    for seq_start in xrange(0, num_chars, sequence_length*batch_size):
         # gives us the starting position of the sequence
         batch = []
-        for seq_pos in xrange(seq_start, seq_start + sequence_length):
-            # for each position in the final sequence
-            # grab a slice of batch_size many indices each seq_length apart
-            batch.append(
-                np.array(
-                    wp_seq[seq_pos:seq_pos+batch_size*sequence_length:sequence_length],
-                    dtype=np.int32))
-        yield batch
+        if (num_chars - num_consumed) < sequence_length*batch_size:
+            return
+        for batch_num in xrange(batch_size):
+            batch.append(np.array(wp_seq[seq_start+batch_num*batch_size:seq_start+batch_num*batch_size+sequence_length]))
+        if len(batch) != batch_size:
+            return
+        if report_progress:
+            yield seq_start / num_chars, batch
+        else:
+            yield batch
+        num_consumed += batch_size * sequence_length
