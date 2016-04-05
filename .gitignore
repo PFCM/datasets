@@ -4,7 +4,8 @@ __pycache__
 *.pyc
 .python-version
 *~
-# any folders called data we will ignore
+# things about specific data we will ignore
+*vocab.txt
 warandpeace.txt
 data
 
