@@ -20,7 +20,7 @@ from rnndatasets import helpers
 
 
 FILENAME = 'warandpeace.txt'
-URL = 'http://www.gutenberg.myebook.bg/2/6/0/2600/2600.txt'
+URL = 'https://cs.stanford.edu/people/karpathy/char-rnn/warpeace_input.txt'
 
 
 def _datapath():
