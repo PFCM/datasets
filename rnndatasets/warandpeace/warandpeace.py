@@ -124,7 +124,8 @@ def _get_sequence(level):
     return seq, vocab
 
 
-def get_char_iter(sequence_length, batch_size, report_progress=False):
+def get_char_iter(sequence_length, batch_size, report_progress=False,
+                  sequential=True, overlap=1):
     """Gets an iterator to batches of war and peace data.
 
     Args:
@@ -133,6 +134,12 @@ def get_char_iter(sequence_length, batch_size, report_progress=False):
         batch_size (int): how many sequences to return at once.
         report_progress (bool): whether or not to report back about
             how far through the data you're getting.
+        sequential (bool): whether to make sure that each batch gets a
+            consistent sequence. This is a good idea if you aren't resetting
+            the state in between batches.
+        overlap (int): overlap between sequences presented. Using an overlap
+            of 1 can be handy if you need to use the shifted sequence as
+            targets (which is likely to be most of the time).
 
     yields:
         list of `sequence_length` numpy int32 arrays, each with shape
@@ -148,19 +155,20 @@ def get_char_iter(sequence_length, batch_size, report_progress=False):
     num_chars = len(wp_seq)
     # this is potentially a little bit slow
     num_batches = num_chars // (sequence_length * batch_size)
-    #print('enough data for {} batches'.format(num_batches))
-    num_consumed = 0
-    for seq_start in xrange(0, num_chars, sequence_length*batch_size):
-        # gives us the starting position of the sequence
+    if sequential:
+        step = sequence_length - overlap
+    else:
+        step = sequence_length * batch_size - overlap
+    for seq_start in xrange(0, num_chars, step):
+        # gives us the starting position of the first sequence
         batch = []
-        if (num_chars - num_consumed) < sequence_length*batch_size:
-            return
-        for batch_num in xrange(batch_size):
-            batch.append(np.array(wp_seq[seq_start+batch_num*batch_size:seq_start+batch_num*batch_size+sequence_length]))
-        if len(batch) != batch_size:
-            return
+        for b in batch_size:
+            if sequential:
+                batch_offset = b * num_chars/num_batches
+            else:
+                batch_offset = b
+            batch.append(wp_seq[seq_start + batch_offset:seq_start + batch_offset + sequence_length])
         if report_progress:
-            yield seq_start / num_chars, batch
+            yield (seq_start+sequence_length) / num_chars, batch
         else:
             yield batch
-        num_consumed += batch_size * sequence_length
