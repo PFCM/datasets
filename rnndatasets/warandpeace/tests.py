@@ -30,9 +30,9 @@ class WarAndPeaceTests(unittest.TestCase):
 
     def test_iterator(self):
         """see if we can iterate war and peace in batches"""
-        slen = 12
-        blen = 11
+        slen = 200
+        blen = 100
         for batch in warandpeace.get_char_iter(slen, blen):
-            self.assertEqual(len(batch), blen)
+            self.assertEqual(len(batch), slen)
             for item in batch:
-                self.assertEqual(item.shape, (slen,))
+                self.assertEqual(len(item), blen)

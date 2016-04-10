@@ -159,16 +159,25 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
         step = sequence_length - overlap
     else:
         step = sequence_length * batch_size - overlap
+    batchnum = 0
     for seq_start in xrange(0, num_chars, step):
         # gives us the starting position of the first sequence
         batch = []
-        for b in batch_size:
+        for b in xrange(batch_size):
             if sequential:
-                batch_offset = b * num_chars/num_batches
+                batch_offset = b * num_chars // num_batches
             else:
                 batch_offset = b
             batch.append(wp_seq[seq_start + batch_offset:seq_start + batch_offset + sequence_length])
+        # we have all of the sequences, now we have to convert to time-major
+        time_batch = []
+        for seq in xrange(sequence_length):
+            time_batch.append(
+                np.array([batch[bnum][seq] for bnum in xrange(batch_size)]))
         if report_progress:
-            yield (seq_start+sequence_length) / num_chars, batch
+            yield (seq_start+sequence_length) / num_chars, time_batch
         else:
-            yield batch
+            yield time_batch
+        batchnum += 1
+        if batchnum >= num_batches:
+            break
