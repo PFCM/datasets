@@ -125,7 +125,7 @@ def _get_sequence(level):
 
 
 def get_char_iter(sequence_length, batch_size, report_progress=False,
-                  sequential=True, overlap=1):
+                  sequential=True, overlap=1, max_chars=None):
     """Gets an iterator to batches of war and peace data.
 
     Args:
@@ -140,6 +140,8 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
         overlap (int): overlap between sequences presented. Using an overlap
             of 1 can be handy if you need to use the shifted sequence as
             targets (which is likely to be most of the time).
+        max_chars (int): the maximum number of chars to return,
+            useful for testing things without using the full data.
 
     yields:
         list of `sequence_length` numpy int32 arrays, each with shape
@@ -152,6 +154,8 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
     # w & p isn't huge, so the first thing we will do is just pull
     # the lot into memory
     wp_seq, _ = _get_sequence('char')
+    if max_chars:
+        wp_seq = wp_seq[:max_chars]
     num_chars = len(wp_seq)
     # this is potentially a little bit slow
     num_batches = num_chars // (sequence_length * batch_size)
