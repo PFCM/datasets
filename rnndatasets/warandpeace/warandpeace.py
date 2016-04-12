@@ -125,7 +125,7 @@ def _get_sequence(level):
 
 
 def get_char_iter(sequence_length, batch_size, report_progress=False,
-                  sequential=True, overlap=1, max_chars=None):
+                  sequential=True, overlap=1, max_chars=None, start=0):
     """Gets an iterator to batches of war and peace data.
 
     Args:
@@ -154,6 +154,8 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
     # w & p isn't huge, so the first thing we will do is just pull
     # the lot into memory
     wp_seq, _ = _get_sequence('char')
+    if start:
+        wp_seq = wp_seq[start:]
     if max_chars:
         wp_seq = wp_seq[:max_chars]
     num_chars = len(wp_seq)
@@ -164,7 +166,7 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
     else:
         step = sequence_length * batch_size - overlap
     batchnum = 0
-    for seq_start in xrange(0, num_chars, step):
+    for seq_start in xrange(start, start + num_chars, step):
         # gives us the starting position of the first sequence
         batch = []
         for b in xrange(batch_size):
@@ -179,9 +181,64 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
             time_batch.append(
                 np.array([batch[bnum][seq] for bnum in xrange(batch_size)]))
         if report_progress:
-            yield (seq_start+sequence_length) / num_chars, time_batch
+            yield (seq_start*batch_size+sequence_length) / num_chars, time_batch
         else:
             yield time_batch
         batchnum += 1
         if batchnum >= num_batches:
             break
+
+
+def get_split_iters(sequence_length, batch_size, level='char', split=(0.8, 0.1, 0.1),
+                    report_progress=False):
+    """Gets separate iterators for training, validation and test data.
+
+    Args:
+        sequence_length: length of resulting sequences.
+        batch_size: sequences per batch.
+        level {'char', 'word'}: whether to use characters or words as the
+            basic symbols.
+        split: What portion of the data to use for train, validation and test. 
+            Should be a sequence of floats, default (0.8,0.1,0.1). It is probably
+            a good plan to make sure these sum to one.
+        report_progress: whether the iterators should return a float as well indicating
+            how much they have left.
+
+    Returns:
+        iterators over batches of data, with an overlap of 
+            one symbol each time (so that it can be used for sequential
+            language modelling.
+    """
+    seq, _ = _get_sequence(level)
+    total_length = len(seq)
+    train_start = 0
+    num_valid = int(split[1] * total_length)
+    valid_start = int(total_length * split[0]) + 1
+    num_test = int(split[2] * total_length)
+    test_start = valid_start + num_valid + 1
+
+    print('~~~~({} training symbols)'.format(valid_start-1))
+    print('~~~~({} validation symbols)'.format(num_valid))
+    print('~~~~({} test symbols)'.format(num_test))
+    
+    if level == 'char':
+        train_iter = get_char_iter(sequence_length,
+                                   batch_size,
+                                   report_progress=report_progress,
+                                   start=train_start,
+                                   max_chars=valid_start)
+        valid_iter = get_char_iter(sequence_length,
+                                   batch_size,
+                                   report_progress=report_progress,
+                                   start=valid_start,
+                                   max_chars=num_valid+1)
+        test_iter = get_char_iter(sequence_length,
+                                  batch_size,
+                                  report_progress=report_progress,
+                                  start=test_start,
+                                  max_chars=num_test+1)
+                                   
+        return train_iter, valid_iter, test_iter
+    else:
+        raise NotImplementedError('nope')
+    
