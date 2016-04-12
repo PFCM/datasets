@@ -81,7 +81,7 @@ def _load_vocab(filename):
     with open(filename, 'r', newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
         for row in reader:
-            vocab[row[0]] = row[1]
+            vocab[row[0]] = int(row[1])
     return vocab
 
 
