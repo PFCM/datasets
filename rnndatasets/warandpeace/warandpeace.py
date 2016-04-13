@@ -166,15 +166,17 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
     else:
         step = sequence_length * batch_size - overlap
     batchnum = 0
-    for seq_start in xrange(start, start + num_chars, step):
+    for seq_start in xrange(0, num_chars, step):
         # gives us the starting position of the first sequence
         batch = []
         for b in xrange(batch_size):
-            if sequential:
-                batch_offset = b * num_chars // num_batches
-            else:
-                batch_offset = b
-            batch.append(wp_seq[seq_start + batch_offset:seq_start + batch_offset + sequence_length])
+            # if sequential:
+            #     batch_offset = b * num_chars // num_batches
+            # else:
+            #     batch_offset = b
+            slice_start = seq_start + b*sequence_length
+            slice_end = slice_start + sequence_length
+            batch.append(wp_seq[slice_start:slice_end])
         # we have all of the sequences, now we have to convert to time-major
         time_batch = []
         for seq in xrange(sequence_length):
@@ -189,8 +191,8 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
             break
 
 
-def get_split_iters(sequence_length, batch_size, level='char', split=(0.8, 0.1, 0.1),
-                    report_progress=False):
+def get_split_iters(sequence_length, batch_size, level='char',
+                    split=(0.8, 0.1, 0.1), report_progress=False):
     """Gets separate iterators for training, validation and test data.
 
     Args:
@@ -198,14 +200,15 @@ def get_split_iters(sequence_length, batch_size, level='char', split=(0.8, 0.1, 
         batch_size: sequences per batch.
         level {'char', 'word'}: whether to use characters or words as the
             basic symbols.
-        split: What portion of the data to use for train, validation and test. 
-            Should be a sequence of floats, default (0.8,0.1,0.1). It is probably
-            a good plan to make sure these sum to one.
-        report_progress: whether the iterators should return a float as well indicating
+        split: What portion of the data to use for train, validation and test.
+            Should be a sequence of floats, default (0.8,0.1,0.1). It is
+            probably a good plan to make sure these sum to <= one.
+        report_progress: whether the iterators should return a float as well
+            indicating
             how much they have left.
 
     Returns:
-        iterators over batches of data, with an overlap of 
+        iterators over batches of data, with an overlap of
             one symbol each time (so that it can be used for sequential
             language modelling.
     """
@@ -217,10 +220,10 @@ def get_split_iters(sequence_length, batch_size, level='char', split=(0.8, 0.1, 
     num_test = int(split[2] * total_length)
     test_start = valid_start + num_valid + 1
 
-    print('~~~~({} training symbols)'.format(valid_start-1))
-    print('~~~~({} validation symbols)'.format(num_valid))
-    print('~~~~({} test symbols)'.format(num_test))
-    
+    # print('~~~~({} training symbols)'.format(valid_start-1))
+    # print('~~~~({} validation symbols)'.format(num_valid))
+    # print('~~~~({} test symbols)'.format(num_test))
+
     if level == 'char':
         train_iter = get_char_iter(sequence_length,
                                    batch_size,
@@ -237,8 +240,7 @@ def get_split_iters(sequence_length, batch_size, level='char', split=(0.8, 0.1, 
                                   report_progress=report_progress,
                                   start=test_start,
                                   max_chars=num_test+1)
-                                   
+
         return train_iter, valid_iter, test_iter
     else:
         raise NotImplementedError('nope')
-    
