@@ -9,6 +9,10 @@ __pycache__
 warandpeace.txt
 data
 
+# feels like shouldn't have to do this explicitly
+rnndatasets/ptb/simple-examples/*
+*.tgz
+
 # distribution stuff
 /dist/
 /*.egg-info
