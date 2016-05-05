@@ -15,7 +15,7 @@ import tarfile
 from six.moves import xrange
 
 import numpy as np
-import tensorflow as tf
+# import tensorflow as tf
 
 import rnndatasets.helpers as helpers
 
