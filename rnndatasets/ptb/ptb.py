@@ -47,17 +47,17 @@ def check_files():
     data_dir = _datapath('simple-examples/data')
     if not os.path.exists(data_dir):
         logging.info('Data not found')
-        gz_filename = os.path.join(data_dir, 'simple-examples.tgz')
+        gz_filename = _datapath('simple-examples.tgz')
         with tarfile.open(
                 helpers.maybe_download(
                     gz_filename,
                     'http://www.fit.vutbr.cz/~imikolov/rnnlm/simple-examples.tgz'),
                 'r:gz') as f:
-            f.extractall(path=data_dir)
+            f.extractall(path=_datapath(''))
     return (os.path.join(data_dir, 'ptb.train.txt'),
             os.path.join(data_dir, 'ptb.valid.txt'),
             os.path.join(data_dir, 'ptb.test.txt'))
-        
+
 
 def _as_ids(filename, vocab):
     """Return the data in the file encoded using vocab"""
@@ -69,7 +69,7 @@ def get_ptb_data():
     """Gets raw data.
     """
     train_file, valid_file, test_file = check_files()
-    
+
     vocab = get_vocab(train_file)
     train_data = _as_ids(train_file, vocab)
     valid_data = _as_ids(valid_file, vocab)
