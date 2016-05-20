@@ -10,3 +10,9 @@ recurrent neural networks and Tensorflow in mind. Currently requires python
 
 Datasets:
 - War and Peace
+- Sequential mnist
+
+---
+
+In progress:
+- PTB (word or char?)
