@@ -12,6 +12,7 @@ data
 # feels like shouldn't have to do this explicitly
 rnndatasets/ptb/simple-examples/*
 *.tgz
+*.gz
 
 # distribution stuff
 /dist/
