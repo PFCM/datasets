@@ -1,8 +1,10 @@
 """Gets mnist, does it sequentially, some number of pixels at
-a time."""
+a time (probably one to be consistent with the lit)."""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+
+from six.moves import xrange
 
 import os
 import gzip
@@ -44,7 +46,7 @@ def get_data(dataset, num_images):
         (images, labels): both numpy arrays, with images of shape
             `[num_images, IMAGE_PIXELS*IMAGE_PIXELS]` rescaled to
             with pixel values rescaled to `[-0.5, 0.5]`.
-            Labels are shape `[num_images, 1]` and of type int64.
+            Labels are shape `[num_images]` and of type int64.
     """
     image_file = maybe_download(
         FILE_NAMES[dataset]['images'],
@@ -57,28 +59,62 @@ def get_data(dataset, num_images):
         buf = bytestream.read(IMAGE_SIZE * IMAGE_SIZE * num_images)
         data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
         data = (data - (255.0 / 2.0)) / 255.0
-        data = data.reshape(num_images, IMAGE_SIZE * IMAGE_SIZE)
+        # batch x time x features
+        data = data.reshape(num_images, IMAGE_SIZE * IMAGE_SIZE, 1)
     # and the labels
     with gzip.open(label_file) as bytestream:
         bytestream.read(8)
         buf = bytestream.read(num_images)
         labels = np.frombuffer(buf, dtype=np.uint8).astype(np.int64)
 
-    return images, labels
+    return data, labels
 
 
-def batch_iter(data, batch_size):
+def batch_iter(data, batch_size, time_major=True):
     """Makes an iterator which returns `batch_size` chunks of the input.
     If the batch size doesn't divide the data size perfectly, it will
-    just ignore the last stuff.
+    just ignore the last stuff. Expects the input to be
+    `[num x time x features]` (and all the same time)
+
+    Args:
+        data: `[num x time x features]` numpy array.
+        batch_size: the size of the batches to yield.
+        time_major: whether time or batch should be the first index of
+            the yielded data.
+
+    Yields:
+        (data, labes): data is either `[batch_size x time x features]`
+            or `[time x batch_size x features]` depending on time_major.
+            Labels is `[batch_size]`
     """
-    pass
+    num_batches = data[0].shape[0] // batch_size
+    inputs, labels = data
+    for i in xrange(num_batches):
+        batch_data = inputs[i*batch_size:(i+1)*batch_size, ...]
+        if time_major:
+            batch_data = np.transpose(batch_data, [1, 0, 2])
+        batch_labels = labels[i*batch_size:(i+1)*batch_size, ...]
+        yield (batch_data, batch_labels)
 
 
-def get_test_valid_iters(batch_size):
-    """Gets iterators for the train and valid sets.
+def get_iters(batch_size, time_major=True):
+    """Gets iterators for the train, test and valid sets.
+
+    Args:
+        batch_size: size of batches
+        time_major: if true, the iterators will return (input, labels)
+            where input is `[time x batch x features]`. If false
+            `time` and `batch` will be swapped.
 
     Returns:
-        (test, valid): iterators for the test and valid data.
+        (train, valid, test): iterators for the data.
     """
-    raw_data = get_data('train')
+    raw_data = get_data('train', 60000)
+    test_data = get_data('test', 10000)
+
+    train_data = (raw_data[0][:-10000, ...], raw_data[1][:-10000])
+    valid_data = (raw_data[0][-10000:, ...], raw_data[1][-10000:])
+
+    return (batch_iter(train_data, batch_size, time_major),
+            batch_iter(valid_data, batch_size, time_major),
+            batch_iter(test_data, batch_size, time_major))
