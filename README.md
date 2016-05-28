@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/PFCM/datasets.png?label=ready&title=Ready)](https://waffle.io/PFCM/datasets)
 # rnndatasets
 
 [![Build Status](https://travis-ci.org/PFCM/datasets.svg?branch=master)](https://travis-ci.org/PFCM/datasets)
