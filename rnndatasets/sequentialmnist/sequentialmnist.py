@@ -113,15 +113,15 @@ def get_iters(batch_size, time_major=True, shuffle=False):
     
     test_data = get_data('test', 10000)
 
-    train_data = [raw_data[0][:-10000, ...], raw_data[1][:-10000]]
+    train_data = (raw_data[0][:-10000, ...], raw_data[1][:-10000])
     valid_data = (raw_data[0][-10000:, ...], raw_data[1][-10000:])
 
     if shuffle:
         # lazy way of making sure both data and labels gets the same shuffling
         rng_state = np.random.get_state()
-        train_data[0] = np.random.shuffle(train_data[0])
+        np.random.shuffle(train_data[0])
         np.random.set_state(rng_state)
-        train_data[1] = np.random.shuffle(train_data[1])
+        np.random.shuffle(train_data[1])
 
     return (batch_iter(train_data, batch_size, time_major),
             batch_iter(valid_data, batch_size, time_major),
