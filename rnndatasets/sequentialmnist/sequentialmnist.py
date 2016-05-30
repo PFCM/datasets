@@ -113,7 +113,7 @@ def get_iters(batch_size, time_major=True, shuffle=False):
     
     test_data = get_data('test', 10000)
 
-    train_data = (raw_data[0][:-10000, ...], raw_data[1][:-10000])
+    train_data = [raw_data[0][:-10000, ...], raw_data[1][:-10000]]
     valid_data = (raw_data[0][-10000:, ...], raw_data[1][-10000:])
 
     if shuffle:
