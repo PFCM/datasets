@@ -121,7 +121,7 @@ def get_iters(batch_size, time_major=True, shuffle=False):
         rng_state = np.random.get_state()
         train_data[0] = np.random.shuffle(train_data[0])
         np.random.set_state(rng_state)
-        train_data[1] = np.random.shuffle(train_data[1]
+        train_data[1] = np.random.shuffle(train_data[1])
 
     return (batch_iter(train_data, batch_size, time_major),
             batch_iter(valid_data, batch_size, time_major),
