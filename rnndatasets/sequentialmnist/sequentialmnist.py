@@ -29,11 +29,11 @@ URL_BASE = 'http://yann.lecun.com/exdb/mnist/'
 IMAGE_SIZE = 28  # size of mnist images
 
 
-def _datapath():
+def _datapath(filename):
     return os.path.join(
         os.path.dirname(
             os.path.realpath(__file__)),
-        FILENAME)
+        filename)
 
 
 def get_data(dataset, num_images):
@@ -49,10 +49,10 @@ def get_data(dataset, num_images):
             Labels are shape `[num_images]` and of type int64.
     """
     image_file = maybe_download(
-        FILE_NAMES[dataset]['images'],
+        _datapath(FILE_NAMES[dataset]['images']),
         URL_BASE + FILE_NAMES[dataset]['images'])
     label_file = maybe_download(
-        FILE_NAMES[dataset]['labels'],
+        _datapath(FILE_NAMES[dataset]['labels']),
         URL_BASE + FILE_NAMES[dataset]['labels'])
     with gzip.open(image_file) as bytestream:
         bytestream.read(16)
