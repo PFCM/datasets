@@ -70,25 +70,34 @@ def get_data(dataset, num_images):
     return data, labels
 
 
-def batch_iter(data, batch_size, time_major=True):
+def get_permutation(seed):
+    """Gets a random array of permutation indices given a seed"""
+    np.random.seed(seed)
+    return np.random.shuffle(np.arange(IMAGE_SIZE*IMAGE_SIZE))
+
+
+def batch_iter(data, batch_size, time_major=True, permutation=None):
     """Makes an iterator which returns `batch_size` chunks of the input.
     If the batch size doesn't divide the data size perfectly, it will
     just ignore the last stuff. Expects the input to be
     `[num x time x features]` (and all the same time)
 
     Args:
-        data: `[num x time x features]` numpy array.
+        data: (`[num x time x features]`, `[num]`) tuple of arrays of data
+            and images.
         batch_size: the size of the batches to yield.
         time_major: whether time or batch should be the first index of
             the yielded data.
 
     Yields:
-        (data, labes): data is either `[batch_size x time x features]`
+        (data, labels): data is either `[batch_size x time x features]`
             or `[time x batch_size x features]` depending on time_major.
             Labels is `[batch_size]`
     """
     num_batches = data[0].shape[0] // batch_size
     inputs, labels = data
+    if permutation:
+        inputs = inputs[..., permutation, ...]
     for i in xrange(num_batches):
         batch_data = inputs[i*batch_size:(i+1)*batch_size, ...]
         if time_major:
@@ -97,7 +106,7 @@ def batch_iter(data, batch_size, time_major=True):
         yield (batch_data, batch_labels)
 
 
-def get_iters(batch_size, time_major=True, shuffle=False):
+def get_iters(batch_size, time_major=True, shuffle=False, permute=None):
     """Gets iterators for the train, test and valid sets.
 
     Args:
@@ -105,6 +114,9 @@ def get_iters(batch_size, time_major=True, shuffle=False):
         time_major: if true, the iterators will return (input, labels)
             where input is `[time x batch x features]`. If false
             `time` and `batch` will be swapped.
+        shuffle: if the data should be shuffled.
+        permute: either None or a ndarray of int. If the latter, the
+            images will be returned in this order.
 
     Returns:
         (train, valid, test): iterators for the data.
@@ -123,6 +135,6 @@ def get_iters(batch_size, time_major=True, shuffle=False):
         np.random.set_state(rng_state)
         np.random.shuffle(train_data[1])
 
-    return (batch_iter(train_data, batch_size, time_major),
-            batch_iter(valid_data, batch_size, time_major),
-            batch_iter(test_data, batch_size, time_major))
+    return (batch_iter(train_data, batch_size, time_major, permute),
+            batch_iter(valid_data, batch_size, time_major, permute),
+            batch_iter(test_data, batch_size, time_major, permute))
