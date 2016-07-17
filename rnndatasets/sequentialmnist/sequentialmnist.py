@@ -73,7 +73,9 @@ def get_data(dataset, num_images):
 def get_permutation(seed):
     """Gets a random array of permutation indices given a seed"""
     np.random.seed(seed)
-    return np.random.shuffle(np.arange(IMAGE_SIZE*IMAGE_SIZE))
+    idces = np.arange(IMAGE_SIZE*IMAGE_SIZE)
+    np.random.shuffle(idces)
+    return idces
 
 
 def batch_iter(data, batch_size, time_major=True, permutation=None):
