@@ -98,7 +98,7 @@ def batch_iter(data, batch_size, time_major=True, permutation=None):
     """
     num_batches = data[0].shape[0] // batch_size
     inputs, labels = data
-    if permutation:
+    if permutation is not None:
         inputs = inputs[..., permutation, ...]
     for i in xrange(num_batches):
         batch_data = inputs[i*batch_size:(i+1)*batch_size, ...]
