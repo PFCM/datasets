@@ -39,7 +39,7 @@ def get_vocab(filename):
     counter = collections.Counter(words)
     # sort on both counts and alphabet (hopefully)
     sorted_words = sorted(counter.most_common())
-    return dict(zip([item[0] for item in sorted_words], range(len(sorted_words))))
+    return {item[0]: num for num, item in enumerate(sorted_words)}
 
 
 def check_files():
@@ -89,7 +89,8 @@ def batch_iterator(data, batch_size, num_steps):
     Yields:
         pairs of data, inputs and targets (targets are
             inputs shifted to the right by 1). Results in
-            batch major order.
+            batch major order (shape [batch, time]) so you will probably
+            have to transpose them to feed into an RNN.
     """
     data = np.array(data, dtype=np.int32)
 
