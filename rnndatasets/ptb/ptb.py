@@ -108,4 +108,4 @@ def batch_iterator(data, batch_size, num_steps):
     for i in xrange(num_epochs):
         x = batched_data[:, i*num_steps:(i+1)*num_steps]
         y = batched_data[:, i*num_steps+1:(i+1)*num_steps+1]
-        yield (x,y)
+        yield (x, y)
