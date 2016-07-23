@@ -18,6 +18,7 @@ import numpy as np
 # import tensorflow as tf
 
 import rnndatasets.helpers as helpers
+from rnndatasets.helpers import batch_iterator
 
 
 def _datapath(filename):
@@ -76,36 +77,3 @@ def get_ptb_data():
     test_data = _as_ids(test_file, vocab)
 
     return train_data, valid_data, test_data, vocab
-
-
-def batch_iterator(data, batch_size, num_steps):
-    """Iterate in batches.
-
-    Args:
-        data: one of the data outputs from get_ptb_data
-        batch_size: how big the batches are
-        num_steps: how far we are looking back
-
-    Yields:
-        pairs of data, inputs and targets (targets are
-            inputs shifted to the right by 1). Results in
-            batch major order (shape [batch, time]) so you will probably
-            have to transpose them to feed into an RNN.
-    """
-    data = np.array(data, dtype=np.int32)
-
-    data_len = len(data)
-    num_batches = data_len // batch_size
-    batched_data = np.zeros([batch_size, num_batches], dtype=np.int32)
-    for i in xrange(batch_size):
-        batched_data[i] = data[num_batches * i: num_batches * (i+1)]
-
-    num_epochs = (num_batches - 1) // num_steps
-
-    if num_epochs == 0:
-        raise ValueError('batch size or num_steps too big')
-
-    for i in xrange(num_epochs):
-        x = batched_data[:, i*num_steps:(i+1)*num_steps]
-        y = batched_data[:, i*num_steps+1:(i+1)*num_steps+1]
-        yield (x, y)
