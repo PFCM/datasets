@@ -10,6 +10,8 @@ one.
 
 We generate a fixed number of examples for a training and test set.
 It is rather a lot, so this might get a bit gross, memory wise.
+
+We will also try an online version with new random data every time.
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -19,7 +21,36 @@ import numpy as np
 import tensorflow as tf
 
 
-def _gen_numpy_data(sequence_length, num_examples, seed=1001):
+def get_online_sequences(sequence_length, batch_size):
+    """Gets tensor which constantly produce new random examples.
+
+    Args:
+        sequence_length: total length of the sequences.
+        batch_size: how many at a time.
+
+    Returns:
+        (data, targets): data is `[sequence_length, batch_size, 2]` and targets
+            are `[batch_size]`.
+    """
+    # getting the random channel is easy
+    random_data = tf.random_uniform([sequence_length, batch_size, 1],
+                                    minval=0.0, maxval=1.0)
+    # now we need a random marker in each half of the data
+    random_index_1 = tf.random_uniform([1, batch_size], minval=0,
+                                       maxval=sequence_length//2,
+                                       dtype=tf.int32)
+    random_index_2 = tf.random_uniform([1, batch_size], minval=0,
+                                       maxval=sequence_length//2,
+                                       dtype=tf.int32)
+    markers = tf.concat(2, [tf.one_hot(random_index_1, sequence_length//2),
+                            tf.one_hot(random_index_2, sequence_length//2)])
+    markers = tf.transpose(markers)
+    targets = tf.reduce_sum(random_data * markers,
+                            reduction_indices=0)
+    return tf.concat(2, [random_data, markers]), tf.squeeze(targets)
+
+
+def _gen_numpy_data(sequence_length, num_examples, seed=1991):
     """Make a rather large batch of examples. Results will be
     shape `[number, time_step, 2]` (2 because we have two input
     lines: data and mask)."""
@@ -61,7 +92,7 @@ def get_data_batches(sequence_length, batch_size, train_size, test_size,
         [sequence_length, batch_size, 2], targets are [batch_size].
     """
     all_data, all_targets = _gen_numpy_data(sequence_length,
-                                           train_size+test_size)
+                                            train_size+test_size)
     # now we have the data
     # put it into variables
     train_data = tf.Variable(all_data[:train_size, ...], trainable=False)
@@ -90,29 +121,9 @@ def get_data_batches(sequence_length, batch_size, train_size, test_size,
 if __name__ == '__main__':
     """not putting real tests in because can't be bothered getting tensorflow
     on travis"""
-    train, test = get_data_batches(100, 50, 1000, 100, 1)
-    # we would then expect to get 20 batches of data before an exception.
+    targets, data = get_online_sequences(10, 3)
+
     sess = tf.Session()
-    sess.run(tf.initialize_all_variables())
-    coord = tf.train.Coordinator()
-    threads = tf.train.start_queue_runners(sess=sess, coord=coord)
 
-    data, targets = sess.run(test)
-    assert data.shape == (100, 50, 2)
-    assert targets.shape == (50,)
-
-    try:
-        step = 0
-        while not coord.should_stop():
-            data, targets = sess.run(train)
-            assert data.shape == (100, 50, 2)
-            assert targets.shape == (50,)
-            step += 1
-    except tf.errors.OutOfRangeError:
-        assert step == 20
-    finally:
-        coord.request_stop()
-
-    coord.join(threads)
-    sess.close()
-    print('done')
+    with sess.as_default():
+        print(sess.run([data, targets]))
