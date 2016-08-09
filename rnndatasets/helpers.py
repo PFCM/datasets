@@ -58,7 +58,6 @@ def batch_iterator(data, batch_size, num_steps):
     except AttributeError:
         data = np.array(data, dtype=np.int32)
         num_features = 0
-
     data_len = len(data)
     num_batches = data_len // batch_size
     if num_features == 0:

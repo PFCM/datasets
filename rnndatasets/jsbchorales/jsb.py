@@ -16,6 +16,7 @@ from rnndatasets.helpers import batch_iterator
 DATA_URL = 'http://www-etud.iro.umontreal.ca/' \
            '~boulanni/JSB%20Chorales.pickle'
 EOS = 97  # the end of sequence placeholder is one higher than the highest note
+NUM_FEATURES = 55  # the size of the resulting feature vectors
 
 
 def _filename():
@@ -56,7 +57,7 @@ def _one_big_sequence(data):
     occasionally 3. EOS will always be alone.
     """
     big_sequence = [item for sequence in data for item in (sequence + [[EOS]])]
-    np_data = np.zeros((len(big_sequence), 55), dtype=np.float32)
+    np_data = np.zeros((len(big_sequence), NUM_FEATURES), dtype=np.float32)
 
     # now fill in the ones
     for i, notes in enumerate(big_sequence):
