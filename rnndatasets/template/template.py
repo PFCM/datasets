@@ -9,6 +9,69 @@ from six.moves import xrange
 import tensorflow as tf
 
 
+def online_saw_tensors(batch_size, sequence_length, block_size, stddev=1.0):
+    """Returns tensors for the following binary classification problem on 1D
+    sequences of reals:
+        - class 0:
+            - gaussian noise
+        - class 1:
+            - gaussian noise
+            - at a random location, a saw from -stddev to stddev over
+                `block_size` steps.
+
+    So the job is to look for the presence or absence of a predictable shape.
+    A smaller shape should be harder to predict by calculating statistics over
+    the sequences (ie. won't throw off the standard dev). One way to solve the
+    problem is to try and predict the current input + the saw step every time
+    and check how close the prediction is.
+
+    Args:
+        batch_size: how many at once.
+        sequence_length: the total length of all the sequences.
+        block_size: the length of the saw.
+    """
+    with tf.variable_scope('saw_data'):
+        sequences = tf.random_normal([batch_size, sequence_length, 1],
+                                     stddev=stddev)
+        sawtooth = tf.linspace(-stddev, stddev, block_size)
+        # now we have to choose some starting positions
+        starts = tf.random_uniform(
+            [batch_size//2], minval=0, maxval=sequence_length-block_size,
+            dtype=tf.int32)
+        # let's pad the saws with zeros to make them the right shape
+        # there is a tf function for this, but we have to be a little bit
+        # tricky to get the shapes right
+        pads = [tf.pack([start, sequence_length - start - block_size])
+                for start in tf.unpack(starts)]
+
+        sawtooth = tf.pack([tf.pad(sawtooth, tf.expand_dims(pad, 0))
+                            for pad in pads])
+        sawtooth = tf.concat(0, [sawtooth, tf.zeros_like(sawtooth)])
+        # and now figure out how to combine the two
+        # looks like we have to do some weird packing and unpacking again
+        # because it only does one range at a time
+        positions = [tf.range(start, limit=start + block_size)
+                     for start in tf.unpack(starts)]
+
+        mask = [tf.sparse_to_dense(position, [sequence_length],
+                                   True, default_value=False)
+                for position in positions]
+        mask = tf.pack(mask)
+        falses = tf.cast(tf.zeros([batch_size//2, sequence_length]), tf.bool)
+        mask = tf.concat(0, [mask, falses])
+
+        # make sure it all lines up
+        sawtooth = tf.expand_dims(sawtooth, -1)
+        mask = tf.expand_dims(mask, -1)
+
+        data = tf.transpose(tf.select(mask, sawtooth, sequences), [1, 0, 2])
+
+        # and labels are easy
+        labels = tf.concat(0, [tf.ones_like(starts), tf.zeros_like(starts)])
+
+        return data, labels
+
+
 def online_block_tensors(batch_size, sequence_length, block_size,
                          one_chance=0.3, variable_sequence_length=True):
     """Returns tensors for the block problem, classifying tensors as either
@@ -50,8 +113,8 @@ def online_block_tensors(batch_size, sequence_length, block_size,
                 [batch_size], minval=sequence_length // 2,
                 maxval=sequence_length, dtype=tf.int32)
         else:
-            sequence_lengths = tf.convert_to_tensor([sequence_length] * batch_size
-                                                    , dtype=tf.int32)
+            sequence_lengths = tf.convert_to_tensor(
+                [sequence_length] * batch_size, dtype=tf.int32)
 
         # generate positions for our 'objects' for half the sequence
         start_positions = [
@@ -59,7 +122,7 @@ def online_block_tensors(batch_size, sequence_length, block_size,
                 [], minval=0, maxval=seq_len-block_size,
                 dtype=tf.int32)
             for seq_len in tf.unpack(sequence_lengths)[:batch_size//2]]
-        
+
         ones = tf.ones_like(sequences)
 
         # now we want to select between the random or the ones
@@ -82,5 +145,10 @@ def online_block_tensors(batch_size, sequence_length, block_size,
         # the labels are easy
         labels = tf.concat(0, [tf.ones([batch_size//2]),
                                tf.zeros([batch_size//2])])
-        
+
         return tf.select(mask, ones, sequences), sequence_lengths, labels
+
+
+if __name__ == '__main__':
+    sess = tf.Session()
+    print(sess.run(online_saw_tensors(4, 10, 5)))
