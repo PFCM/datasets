@@ -82,5 +82,6 @@ def online_block_tensors(batch_size, sequence_length, block_size,
         # the labels are easy
         labels = tf.concat(0, [tf.ones([batch_size//2]),
                                tf.zeros([batch_size//2])])
-        
+
         return tf.select(mask, ones, sequences), sequence_lengths, labels
+        
