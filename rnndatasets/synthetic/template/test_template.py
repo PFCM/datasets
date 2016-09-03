@@ -1,7 +1,7 @@
 """tests for the template matching problems"""
 import unittest
 
-import rnndatasets.template.template as template
+import rnndatasets.synthetic.template.template as template
 import tensorflow as tf
 
 
