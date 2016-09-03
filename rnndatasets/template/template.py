@@ -153,3 +153,4 @@ def online_block_tensors(batch_size, sequence_length, block_size,
 if __name__ == '__main__':
     sess = tf.Session()
     print(sess.run(online_saw_tensors(4, 10, 5)))
+
