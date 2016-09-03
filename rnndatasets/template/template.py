@@ -32,12 +32,12 @@ def online_saw_tensors(batch_size, sequence_length, block_size, stddev=1.0):
     """
     with tf.variable_scope('saw_data'):
         sequences = tf.random_normal([batch_size, sequence_length, 1],
-                                     stddev=stddev)
-        sawtooth = tf.linspace(-stddev, stddev, block_size)
+                                     stddev=stddev, name='noise')
+        sawtooth = tf.linspace(-stddev, stddev, block_size, name='saw')
         # now we have to choose some starting positions
         starts = tf.random_uniform(
             [batch_size//2], minval=0, maxval=sequence_length-block_size,
-            dtype=tf.int32)
+            dtype=tf.int32, name='starts')
         # let's pad the saws with zeros to make them the right shape
         # there is a tf function for this, but we have to be a little bit
         # tricky to get the shapes right
@@ -45,7 +45,7 @@ def online_saw_tensors(batch_size, sequence_length, block_size, stddev=1.0):
                 for start in tf.unpack(starts)]
 
         sawtooth = tf.pack([tf.pad(sawtooth, tf.expand_dims(pad, 0))
-                            for pad in pads])
+                            for pad in pads], name='saws')
         sawtooth = tf.concat(0, [sawtooth, tf.zeros_like(sawtooth)])
         # and now figure out how to combine the two
         # looks like we have to do some weird packing and unpacking again
@@ -68,6 +68,7 @@ def online_saw_tensors(batch_size, sequence_length, block_size, stddev=1.0):
 
         # and labels are easy
         labels = tf.concat(0, [tf.ones_like(starts), tf.zeros_like(starts)])
+        labels = tf.cast(labels, tf.float32)
 
         return data, labels
 
