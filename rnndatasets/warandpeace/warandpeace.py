@@ -192,7 +192,7 @@ def get_char_iter(sequence_length, batch_size, report_progress=False,
 
 
 def get_split_iters(sequence_length, batch_size, level='char',
-                    split=(0.8, 0.1, 0.1), report_progress=False):
+                    split=(0.8, 0.1, 0.1), report_progress=False, overlap=1):
     """Gets separate iterators for training, validation and test data.
 
     Args:
@@ -229,17 +229,20 @@ def get_split_iters(sequence_length, batch_size, level='char',
                                    batch_size,
                                    report_progress=report_progress,
                                    start=train_start,
-                                   max_chars=valid_start)
+                                   max_chars=valid_start,
+                                   overlap=overlap)
         valid_iter = get_char_iter(sequence_length,
                                    batch_size,
                                    report_progress=report_progress,
                                    start=valid_start,
-                                   max_chars=num_valid+1)
+                                   max_chars=num_valid+1,
+                                   overlap=overlap)
         test_iter = get_char_iter(sequence_length,
                                   batch_size,
                                   report_progress=report_progress,
                                   start=test_start,
-                                  max_chars=num_test+1)
+                                  max_chars=num_test+1,
+                                  overlap=overlap)
 
         return train_iter, valid_iter, test_iter
     else:
