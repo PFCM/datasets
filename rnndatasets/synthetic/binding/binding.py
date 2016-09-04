@@ -43,7 +43,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
     noise = tf.random_uniform([sequence_length, batch_size, dimensionality])
     noise = tf.concat(
         2, [noise, tf.zeros([sequence_length, batch_size, num_items])])
-    binary_patterns = noise  # tf.round(noise)
+    binary_patterns = tf.round(noise)
 
     primer_patterns = [
         tf.tile(
@@ -127,7 +127,32 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         # the opposite, we need the last one to be a pattern (with or without
         # primer bits, probably without)
         # and the target is a one hot
-        raise NotImplementedError('get out of it')
+        num_per_class = batch_size // num_items
+        target_positions = []
+        symbol_positions = [pos + 1 for pos in primer_positions]
+        for item in range(num_items):
+            target_positions.append(
+                symbol_positions[item][num_per_class*item:
+                                       num_per_class*(item+1)])
+        target_positions = tf.concat(0, target_positions)
+        prompts = [tf.slice(
+            current_sequence, [tpos, i, 0], [1, 1, dimensionality])
+                   for i, tpos in enumerate(tf.unpack(target_positions))]
+        stitch_idces = [tf.range(sequence_length-1), sequence_length-1]
+        prompts = tf.concat(1, prompts)
+
+        zeros = tf.zeros([sequence_length-1, batch_size, num_features])
+
+        prompts = tf.pad(prompts, [[0, 0], [0, 0], [0, num_items]])
+        prompts = tf.concat(0, [zeros, prompts])
+
+        prompt_masks = tf.ones([1, batch_size, num_features])
+        prompt_masks = tf.concat(0, [zeros, prompt_masks])
+        prompt_masks = tf.cast(prompt_masks, tf.bool)
+        current_sequence = tf.select(prompt_masks, prompts, current_sequence)
+
+        targets = tf.cast(tf.round(tf.linspace(0.0, num_items-1, batch_size)),
+                          tf.int32)
 
     return current_sequence, targets
 
@@ -135,7 +160,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
 if __name__ == '__main__':
     sess = tf.Session()
 
-    seq, targets = (sess.run(get_recognition_batch(2, 10, 2)))
+    seq, targets = (sess.run(get_recognition_tensors(2, 10, 2, task='order')))
     print('sequence:')
     print(seq)
     print('targets:')
