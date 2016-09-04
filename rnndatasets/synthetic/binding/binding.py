@@ -13,8 +13,8 @@ from __future__ import print_function
 import tensorflow as tf
 
 
-def get_recognition_batch(batch_size, sequence_length, num_items=1,
-                          dimensionality=8, task='recall'):
+def get_recognition_tensors(batch_size, sequence_length, num_items=1,
+                            dimensionality=8, task='recall'):
     """Produces tensors for the following task:
 
         - inputs are sequences of length `sequence_length` with
@@ -135,7 +135,7 @@ def get_recognition_batch(batch_size, sequence_length, num_items=1,
 if __name__ == '__main__':
     sess = tf.Session()
 
-    seq, targets = (sess.run(get_recognition_batch(2, 4, 2)))
+    seq, targets = (sess.run(get_recognition_batch(2, 10, 2)))
     print('sequence:')
     print(seq)
     print('targets:')
