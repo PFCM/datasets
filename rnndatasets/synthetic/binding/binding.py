@@ -14,7 +14,8 @@ import tensorflow as tf
 
 
 def get_recognition_tensors(batch_size, sequence_length, num_items=1,
-                            dimensionality=8, task='recall'):
+                            dimensionality=8, task='recall', offset=1,
+                            inbetween_noise=True):
     """Produces tensors for the following task:
 
         - inputs are sequences of length `sequence_length` with
@@ -60,7 +61,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
     else:
         # make sure we choose without replacement
         # this is kind of horrifying
-        all_positions = tf.range(sequence_length-2)
+        all_positions = tf.range(sequence_length-offset-1)
         primer_positions = [
             tf.slice(tf.random_shuffle(all_positions), [0], [num_items])
             for _ in range(batch_size)]
@@ -112,7 +113,13 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
 
         # now we have to pull out the targets
         # hopefully we can do this with some fancy slicing/gathering
-        special_positions = [pos + 1 for pos in primer_positions]
+        special_positions = [pos + offset for pos in primer_positions]
+        
+        # we have these, we may now need to zero out the rest of the sequence
+        if not inbetween_noise:
+            current_sequence = zero_inbetween(current_sequence, special_positions,
+                                              dimensionality)
+
         target_positions = []
         for item in range(num_items):
             target_positions.append(
@@ -129,7 +136,12 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         # and the target is a one hot
         num_per_class = batch_size // num_items
         target_positions = []
-        symbol_positions = [pos + 1 for pos in primer_positions]
+        symbol_positions = [pos + offset for pos in primer_positions]
+
+        if not inbetween_noise:
+            current_sequence = zero_inbetween(current_sequence, symbol_positions,
+                                              dimensionality)
+
         for item in range(num_items):
             target_positions.append(
                 symbol_positions[item][num_per_class*item:
@@ -155,6 +167,35 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
                           tf.int32)
 
     return current_sequence, targets
+
+
+def zero_inbetween(seq, keep_idcs, num_features):
+    """Zeros out a sequence in between specified points (only touches specified 
+    features)"""
+    # we'll just multiply elementwise with a binary mask
+    # which means we'll likely be using sparse_to_dense yet again
+    seq_len, batch_size, total_features = seq.get_shape().as_list()
+    batch_range = tf.range(batch_size)
+    seqs = []
+    for idx in keep_idcs:
+        locations = tf.pack([batch_range, idx])
+        locations = tf.transpose(locations)
+        idx_mask = tf.sparse_to_dense(locations,
+                                      [batch_size, seq_len],
+                                      1.0)
+        seqs.append(tf.transpose(idx_mask))
+    seqs = tf.expand_dims(tf.add_n(seqs), -1)
+    mask = tf.tile(seqs, [1, 1, num_features])
+
+    total_features = seq.get_shape().as_list()[-1]
+    if total_features > num_features:
+        mask = tf.concat(
+            2,
+            [mask,
+             tf.ones([seq_len, batch_size, total_features-num_features])])
+        
+    
+    return mask * seq
 
 
 if __name__ == '__main__':
