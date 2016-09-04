@@ -1,1 +1,1 @@
-from rnndatasets.synthetic.binding import *
+from rnndatasets.synthetic.binding.binding import *
