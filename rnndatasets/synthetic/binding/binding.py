@@ -127,7 +127,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         # the opposite, we need the last one to be a pattern (with or without
         # primer bits, probably without)
         # and the target is a one hot
-
+        raise NotImplementedError('get out of it')
 
     return current_sequence, targets
 
