@@ -43,7 +43,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
     noise = tf.random_uniform([sequence_length, batch_size, dimensionality])
     noise = tf.concat(
         2, [noise, tf.zeros([sequence_length, batch_size, num_items])])
-    binary_patterns = tf.round(noise)
+    binary_patterns = noise  # tf.round(noise)
 
     primer_patterns = [
         tf.tile(
@@ -127,7 +127,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         # the opposite, we need the last one to be a pattern (with or without
         # primer bits, probably without)
         # and the target is a one hot
-        raise NotImplementedError('hold your horses mate')
+
 
     return current_sequence, targets
 
