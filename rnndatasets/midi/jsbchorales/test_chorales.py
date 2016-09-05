@@ -1,7 +1,7 @@
 """Tests for chorales"""
 import unittest
 
-import rnndatasets.jsbchorales.jsb as jsb
+import rnndatasets.midi.jsbchorales.jsb as jsb
 
 
 class TestJSBData(unittest.TestCase):
