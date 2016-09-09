@@ -46,6 +46,8 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         2, [noise, tf.zeros([sequence_length, batch_size, num_items])])
     if not real:
         binary_patterns = tf.round(noise)
+    else:
+        binary_patterns = noise
 
     primer_patterns = [
         tf.tile(
