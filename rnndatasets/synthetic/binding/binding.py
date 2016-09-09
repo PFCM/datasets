@@ -15,7 +15,7 @@ import tensorflow as tf
 
 def get_recognition_tensors(batch_size, sequence_length, num_items=1,
                             dimensionality=8, task='recall', offset=1,
-                            inbetween_noise=True):
+                            inbetween_noise=True, real=False):
     """Produces tensors for the following task:
 
         - inputs are sequences of length `sequence_length` with
@@ -44,7 +44,8 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
     noise = tf.random_uniform([sequence_length, batch_size, dimensionality])
     noise = tf.concat(
         2, [noise, tf.zeros([sequence_length, batch_size, num_items])])
-    binary_patterns = tf.round(noise)
+    if not real:
+        binary_patterns = tf.round(noise)
 
     primer_patterns = [
         tf.tile(
@@ -131,8 +132,8 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
                    for i, tpos in enumerate(tf.unpack(target_positions))]
         targets = tf.pack([tf.squeeze(target) for target in targets])
     elif task == 'order':
-        # the opposite, we need the last one to be a pattern (with or without
-        # primer bits, probably without)
+        # the opposite, we need the last one to be a pattern (without primer
+        # bits)
         # and the target is a one hot
         num_per_class = batch_size // num_items
         target_positions = []
@@ -141,11 +142,13 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         if not inbetween_noise:
             current_sequence = zero_inbetween(current_sequence, symbol_positions,
                                               dimensionality)
-
+        targets = []
         for item in range(num_items):
             target_positions.append(
                 symbol_positions[item][num_per_class*item:
                                        num_per_class*(item+1)])
+            targets.extend([item] * num_per_class)
+        print(targets)
         target_positions = tf.concat(0, target_positions)
         prompts = [tf.slice(
             current_sequence, [tpos, i, 0], [1, 1, dimensionality])
@@ -163,8 +166,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         prompt_masks = tf.cast(prompt_masks, tf.bool)
         current_sequence = tf.select(prompt_masks, prompts, current_sequence)
 
-        targets = tf.cast(tf.round(tf.linspace(0.0, num_items-1, batch_size)),
-                          tf.int32)
+        targets = tf.constant(targets, dtype=tf.int64)
 
     return current_sequence, targets
 
