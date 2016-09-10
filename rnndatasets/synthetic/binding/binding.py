@@ -117,10 +117,11 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         # now we have to pull out the targets
         # hopefully we can do this with some fancy slicing/gathering
         special_positions = [pos + offset for pos in primer_positions]
-        
+
         # we have these, we may now need to zero out the rest of the sequence
         if not inbetween_noise:
-            current_sequence = zero_inbetween(current_sequence, special_positions,
+            current_sequence = zero_inbetween(current_sequence,
+                                              special_positions,
                                               dimensionality)
 
         target_positions = []
@@ -142,7 +143,8 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         symbol_positions = [pos + offset for pos in primer_positions]
 
         if not inbetween_noise:
-            current_sequence = zero_inbetween(current_sequence, symbol_positions,
+            current_sequence = zero_inbetween(current_sequence,
+                                              symbol_positions,
                                               dimensionality)
         targets = []
         for item in range(num_items):
@@ -174,7 +176,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
 
 
 def zero_inbetween(seq, keep_idcs, num_features):
-    """Zeros out a sequence in between specified points (only touches specified 
+    """Zeros out a sequence in between specified points (only touches specified
     features)"""
     # we'll just multiply elementwise with a binary mask
     # which means we'll likely be using sparse_to_dense yet again
@@ -197,15 +199,137 @@ def zero_inbetween(seq, keep_idcs, num_features):
             2,
             [mask,
              tf.ones([seq_len, batch_size, total_features-num_features])])
-        
-    
+
     return mask * seq
+
+
+def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
+                                   dimensionality=8,
+                                   real_patterns=False, min_keep_length=1,
+                                   max_keep_length=None):
+    """Round 2.
+
+    Sequences are pretty much all zeros. There are `sequence_length` timesteps.
+    At each timestep the input has `dimensionality` + `num_items` positions.
+    The input vectors are divided into two regions, the pattern region from
+    0 to `dimensionality`-1 and the label region, which is the remaining
+    `num_items` positions.
+
+    Targets are also a sequence of length `sequence_length`, with each input
+    having dimension `dimensionality`.
+
+    - `num_items` positions are chosen without replacement from
+      [1, ..., `sequence_length`/2], denote A the set
+    - if `max_keep_length` = None:
+        - draw a set of random ints U from [min_keep_length, sequence_length]
+        - let B = max(A+U, sequence_length-1)
+    - else:
+        - draw a set of random ints U from [min_keep_length, max_keep_length]
+        - let B = max(A+U, sequence_length-1)
+    - A and B are put together to form a list of pairs C
+    - for each pair (a, b) in C:
+        - set one of the label bits to one from timestep a to b inclusive.
+        - generate a random pattern, insert it into the input sequence at time
+          a+1 and into the target pattern at time b+1.
+
+    It is possible for inputs to have to be output at the same time, in this
+    case the target is the logical AND of the patterns.
+
+    Arguments:
+        batch_size: batch size of the result.
+        sequence_length: total length of the sequences.
+        num_items: how many different patterns there are to remember.
+        dimensionality: the size of the patterns to remember and reconstruct.
+        real_patterns (bool): whether the patterns are real numbers (True) or
+            binary.
+        min_keep_length: the minimum length of time a pattern will be held for.
+        max_keep_length: the maximum length of time a pattern will be held for,
+            which is key for determining the difficult of the task. If None,
+            the (rather unlikely) maximum will be the length of the sequence
+            minus 1.
+    """
+    # we can do this by making sequences of zeros and adding to them.
+    input_features = num_items + dimensionality
+    inputs = tf.zeros([sequence_length, batch_size, input_features])
+    targets = tf.zeros([sequence_length, batch_size, dimensionality])
+    # we need to choose some positions
+    max_start = sequence_length//2
+    # slightly easier to deal with each guy separately
+    start_range = tf.range(max_start)
+    starts = tf.pack([tf.random_shuffle(start_range)
+                      for _ in range(batch_size)])
+    starts = starts[:, :num_items]
+    starts = tf.unpack(tf.transpose(starts))
+    # and offsets
+    offsets = [tf.random_uniform([batch_size], minval=min_keep_length+1,
+                                 maxval=max_keep_length or sequence_length,
+                                 dtype=tf.int32)
+               for _ in range(num_items)]
+    stops = [tf.clip_by_value(start + offset, 0, sequence_length-2)
+             for start, offset in zip(starts, offsets)]
+    # now we have what we need to start filling in bits
+    # this is easier said than done
+    # it seems the only way is to do it once per item in the batch :(
+    # (mostly because tf.range only takes scalars and we need it to generate
+    # indices)
+    dim_range = tf.range(dimensionality)
+    dim_ones = tf.ones([dimensionality], dtype=tf.int32)
+    for i, (start, stop) in enumerate(zip(starts, stops)):
+        batch_seqs = []
+        batch_inputs = []
+        batch_targs = []
+        for b_start, b_stop in zip(tf.unpack(start), tf.unpack(stop)):
+            seq_idcs = tf.range(b_start, b_stop+1)
+            seq_idcs = tf.pack(
+                [seq_idcs, tf.ones_like(seq_idcs) * (input_features-i-1)])
+            seq_idcs = tf.transpose(seq_idcs)
+            label_bits = tf.sparse_to_dense(
+                seq_idcs, [sequence_length, input_features], 1.0)
+            batch_seqs.append(label_bits)
+
+            # and let's make a pattern
+            # probably it would be faster to do this a whole batch at a time
+            # but my brain hurts already
+            pattern = tf.random_uniform([dimensionality])
+            if not real_patterns:
+                pattern = tf.round(pattern)
+            # now make two `[sequence_length, dimensionality]` with the pattern
+            # in the right place for input and target
+            # this should mean some careful construction of indices and two
+            # calls to sparse_to_dense
+            # actually, it's easy, we just need the seq pos on one side and
+            # dim_range on the other
+            input_idcs = tf.transpose(
+                tf.pack([dim_ones * (b_start+1), dim_range]))
+            b_input = tf.sparse_to_dense(
+                input_idcs, [sequence_length, dimensionality], pattern)
+            target_idcs = tf.transpose(
+                tf.pack([dim_ones * (b_stop+1), dim_range]))
+            b_target = tf.sparse_to_dense(
+                target_idcs, [sequence_length, dimensionality], pattern)
+            batch_inputs.append(b_input)
+            batch_targs.append(b_target)
+
+        batch_labels = tf.pack(batch_seqs)
+        batch_labels = tf.transpose(batch_labels, [1, 0, 2])
+
+        batch_inputs = tf.pack(batch_inputs)
+        batch_inputs = tf.transpose(batch_inputs, [1, 0, 2])
+        batch_inputs = tf.pad(batch_inputs, [[0, 0], [0, 0], [0, num_items]])
+
+        inputs += batch_labels + batch_inputs
+
+        batch_targs = tf.pack(batch_targs)
+        batch_targs = tf.transpose(batch_targs, [1, 0, 2])
+        targets += batch_targs
+
+    return inputs, tf.clip_by_value(targets, 0.0, 1.0)
 
 
 if __name__ == '__main__':
     sess = tf.Session()
 
-    seq, targets = (sess.run(get_recognition_tensors(2, 10, 2, task='order')))
+    seq, targets = (sess.run(get_continuous_binding_tensors(2, 10, 2)))
     print('sequence:')
     print(seq)
     print('targets:')
