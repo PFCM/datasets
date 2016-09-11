@@ -114,7 +114,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         # now we have to pull out the targets
         # hopefully we can do this with some fancy slicing/gathering
         special_positions = [pos + offset for pos in primer_positions]
-        
+
         # we have these, we may now need to zero out the rest of the sequence
         if not inbetween_noise:
             current_sequence = zero_inbetween(current_sequence, special_positions,
@@ -170,7 +170,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
 
 
 def zero_inbetween(seq, keep_idcs, num_features):
-    """Zeros out a sequence in between specified points (only touches specified 
+    """Zeros out a sequence in between specified points (only touches specified
     features)"""
     # we'll just multiply elementwise with a binary mask
     # which means we'll likely be using sparse_to_dense yet again
@@ -193,16 +193,16 @@ def zero_inbetween(seq, keep_idcs, num_features):
             2,
             [mask,
              tf.ones([seq_len, batch_size, total_features-num_features])])
-        
-    
+
+
     return mask * seq
 
 
 if __name__ == '__main__':
     sess = tf.Session()
 
-    seq, targets = (sess.run(get_recognition_tensors(2, 10, 2, task='order')))
+    sequ, targets = (sess.run(get_recognition_tensors(2, 10, 2, task='order')))
     print('sequence:')
-    print(seq)
+    print(sequ)
     print('targets:')
     print(targets)
