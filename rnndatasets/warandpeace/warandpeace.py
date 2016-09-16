@@ -34,8 +34,8 @@ def _get_big_string():
     """gets war and peace as a big string"""
     if not hasattr(_get_big_string, 'BIG_STRING'):
         with open(helpers.maybe_download(
-                _datapath(), URL), encoding='utf-8') as datafile:
-            _get_big_string.BIG_STRING = datafile.read()
+                _datapath(), URL), encoding='utf-8-sig') as datafile:
+            _get_big_string.BIG_STRING = datafile.read().encode('utf-8').decode('utf-8')
     return _get_big_string.BIG_STRING
 
 
