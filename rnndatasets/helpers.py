@@ -37,13 +37,15 @@ def maybe_download(filepath, url):
     return filepath
 
 
-def batch_iterator(data, batch_size, num_steps):
+def batch_iterator(data, batch_size, num_steps, time_major=False):
     """Iterate in batches. For next-step prediction.
 
     Args:
         data: a really big sequence
         batch_size: how big the batches are
         num_steps: how far we are looking back
+        time_major (Optional): whether the result is as listed below
+            (False, default) or transposed (True)
 
     Yields:
         pairs of data, inputs and targets (targets are
@@ -51,11 +53,11 @@ def batch_iterator(data, batch_size, num_steps):
             batch major order (shape [batch, time]) so you will probably
             have to transpose them to feed into an RNN.
     """
-    # lets see if the data is an np array, if it isn't we'll treat it as
+    # lets see if the data is an 2d np array, if it isn't we'll treat it as
     # integer labels
     try:
         num_features = data.shape[1]
-    except AttributeError:
+    except (AttributeError, IndexError):
         data = np.array(data, dtype=np.int32)
         num_features = 0
     data_len = len(data)
@@ -77,4 +79,6 @@ def batch_iterator(data, batch_size, num_steps):
     for i in xrange(num_epochs):
         x = batched_data[:, i*num_steps:(i+1)*num_steps, ...]
         y = batched_data[:, i*num_steps+1:(i+1)*num_steps+1, ...]
+        if time_major:
+            x, y = x.T, y.T
         yield (x, y)
