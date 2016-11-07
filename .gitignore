@@ -18,3 +18,5 @@ rnndatasets/ptb/simple-examples/*
 # distribution stuff
 /dist/
 /*.egg-info
+
+rnndatasets/*/*.txt
