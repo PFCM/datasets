@@ -26,14 +26,13 @@ URL = "http://pfcmathews.com/assets/occulttraining.txt"
 
 def _read_chars(filename):
     with gfile.GFile(maybe_download(filename, URL), "r") as f:
-        return list(f.read())
+        return list(f.read().decode())
 
 
 def _build_vocab(filename):
     data = _read_chars(filename)
     counter = collections.Counter(data)
-    count_pairs = sorted(counter.items(), key=lambda x: -x[1])
-
+    count_pairs = counter.most_common()
     words, other = list(zip(*count_pairs))
     word_to_id = dict(zip(words, range(len(words))))
     word_to_id['<GO>'] = len(word_to_id)
