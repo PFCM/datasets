@@ -45,10 +45,10 @@ def get_online_sequences(sequence_length, batch_size,
     central_fillers = tf.fill([sequence_length-1, batch_size, 1], 8)
     go = tf.fill([1, batch_size, 1], 9)
     final_fillers = tf.fill([pattern_length, batch_size, 1], 8)
-    inputs = tf.concat(0, [pattern, central_fillers, go, final_fillers])
+    inputs = tf.concat(axis=0, values=[pattern, central_fillers, go, final_fillers])
 
     fillers = tf.fill([sequence_length+pattern_length, batch_size, 1], 8)
-    targets = tf.concat(0, [fillers, pattern])
+    targets = tf.concat(axis=0, values=[fillers, pattern])
 
     return inputs, targets
 

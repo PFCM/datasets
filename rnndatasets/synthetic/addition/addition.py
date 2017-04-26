@@ -42,12 +42,12 @@ def get_online_sequences(sequence_length, batch_size):
     random_index_2 = tf.random_uniform([1, batch_size], minval=0,
                                        maxval=sequence_length//2,
                                        dtype=tf.int32)
-    markers = tf.concat(2, [tf.one_hot(random_index_1, sequence_length//2),
+    markers = tf.concat(axis=2, values=[tf.one_hot(random_index_1, sequence_length//2),
                             tf.one_hot(random_index_2, sequence_length//2)])
     markers = tf.transpose(markers)
     targets = tf.reduce_sum(random_data * markers,
-                            reduction_indices=0)
-    return tf.concat(2, [random_data, markers]), tf.squeeze(targets)
+                            axis=0)
+    return tf.concat(axis=2, values=[random_data, markers]), tf.squeeze(targets)
 
 
 def _gen_numpy_data(sequence_length, num_examples, seed=1991):

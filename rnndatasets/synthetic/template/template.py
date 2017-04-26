@@ -41,33 +41,33 @@ def online_saw_tensors(batch_size, sequence_length, block_size, stddev=1.0):
         # let's pad the saws with zeros to make them the right shape
         # there is a tf function for this, but we have to be a little bit
         # tricky to get the shapes right
-        pads = [tf.pack([start, sequence_length - start - block_size])
-                for start in tf.unpack(starts)]
+        pads = [tf.stack([start, sequence_length - start - block_size])
+                for start in tf.unstack(starts)]
 
-        sawtooth = tf.pack([tf.pad(sawtooth, tf.expand_dims(pad, 0))
+        sawtooth = tf.stack([tf.pad(sawtooth, tf.expand_dims(pad, 0))
                             for pad in pads], name='saws')
-        sawtooth = tf.concat(0, [sawtooth, tf.zeros_like(sawtooth)])
+        sawtooth = tf.concat(axis=0, values=[sawtooth, tf.zeros_like(sawtooth)])
         # and now figure out how to combine the two
         # looks like we have to do some weird packing and unpacking again
         # because it only does one range at a time
         positions = [tf.range(start, limit=start + block_size)
-                     for start in tf.unpack(starts)]
+                     for start in tf.unstack(starts)]
 
         mask = [tf.sparse_to_dense(position, [sequence_length],
                                    True, default_value=False)
                 for position in positions]
-        mask = tf.pack(mask)
+        mask = tf.stack(mask)
         falses = tf.cast(tf.zeros([batch_size//2, sequence_length]), tf.bool)
-        mask = tf.concat(0, [mask, falses])
+        mask = tf.concat(axis=0, values=[mask, falses])
 
         # make sure it all lines up
         sawtooth = tf.expand_dims(sawtooth, -1)
         mask = tf.expand_dims(mask, -1)
 
-        data = tf.transpose(tf.select(mask, sawtooth, sequences), [1, 0, 2])
+        data = tf.transpose(tf.where(mask, sawtooth, sequences), [1, 0, 2])
 
         # and labels are easy
-        labels = tf.concat(0, [tf.ones_like(starts), tf.zeros_like(starts)])
+        labels = tf.concat(axis=0, values=[tf.ones_like(starts), tf.zeros_like(starts)])
         labels = tf.cast(labels, tf.float32)
 
         return data, labels
@@ -122,7 +122,7 @@ def online_block_tensors(batch_size, sequence_length, block_size,
             tf.random_uniform(
                 [], minval=0, maxval=seq_len-block_size,
                 dtype=tf.int32)
-            for seq_len in tf.unpack(sequence_lengths)[:batch_size//2]]
+            for seq_len in tf.unstack(sequence_lengths)[:batch_size//2]]
 
         ones = tf.ones_like(sequences)
 
@@ -137,17 +137,17 @@ def online_block_tensors(batch_size, sequence_length, block_size,
                                default_value=False)
             for index in indices]
         mask = [tf.expand_dims(seq, 1) for seq in mask]
-        mask = tf.pack(mask)
+        mask = tf.stack(mask)
         mask = tf.transpose(mask, [1, 0, 2])
 
         # add in some falses so we leave half the sequences untouched
-        mask = tf.concat(1, [mask, tf.constant(False, shape=mask.get_shape())])
+        mask = tf.concat(axis=1, values=[mask, tf.constant(False, shape=mask.get_shape())])
 
         # the labels are easy
-        labels = tf.concat(0, [tf.ones([batch_size//2]),
+        labels = tf.concat(axis=0, values=[tf.ones([batch_size//2]),
                                tf.zeros([batch_size//2])])
 
-        return tf.select(mask, ones, sequences), sequence_lengths, labels
+        return tf.where(mask, ones, sequences), sequence_lengths, labels
 
 
 if __name__ == '__main__':

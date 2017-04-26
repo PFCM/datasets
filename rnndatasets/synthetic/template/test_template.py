@@ -12,8 +12,8 @@ class TestTemplate(unittest.TestCase):
         sequences = template.online_block_tensors(4, 25, 5)
 
         sess = tf.Session()
-        sess.run(tf.initialize_all_variables())
-        sess.run(tf.initialize_local_variables())
+        sess.run(tf.global_variables_initializer())
+        sess.run(tf.local_variables_initializer())
 
         seqs, lengths, labels = sess.run(sequences)
         self.assertEqual(seqs.shape, (25, 4, 1))

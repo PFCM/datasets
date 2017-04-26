@@ -43,7 +43,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
 
     noise = tf.random_uniform([sequence_length, batch_size, dimensionality])
     noise = tf.concat(
-        2, [noise, tf.zeros([sequence_length, batch_size, num_items])])
+        axis=2, values=[noise, tf.zeros([sequence_length, batch_size, num_items])])
     if not real:
         binary_patterns = tf.round(noise)
     else:
@@ -68,14 +68,14 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
         primer_positions = [
             tf.slice(tf.random_shuffle(all_positions), [0], [num_items])
             for _ in range(batch_size)]
-        primer_positions = tf.unpack(tf.transpose(tf.pack(primer_positions)))
+        primer_positions = tf.unstack(tf.transpose(tf.stack(primer_positions)))
     # one way or another we have positions given by
     # a list of `[batch_size]` int tensors.
     # in order to do a tf.select we need to turn them into
     # `[sequence_length, batch_size, num_features]` bool tensors
     primer_masks = []
     for idces in primer_positions:
-        locations = tf.pack([tf.range(batch_size), idces])
+        locations = tf.stack([tf.range(batch_size), idces])
         # we do this so that the indices are ordered
         locations = tf.transpose(locations)
         batch_mask = tf.sparse_to_dense(
@@ -91,7 +91,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
     # and now we should be in a position to nest a whole bunch of selects
     current_sequence = binary_patterns
     for mask, pattern in zip(primer_masks, primer_patterns):
-        current_sequence = tf.select(mask, pattern, current_sequence)
+        current_sequence = tf.where(mask, pattern, current_sequence)
 
     # now we have to figure out how to go ahead and put the appropriate
     # pattern into the last positions and come up with the required targets
@@ -112,7 +112,7 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
                         for i in range(num_items)]
 
         for mask, pattern in zip(target_masks, primer_patterns):
-            current_sequence = tf.select(mask, pattern, current_sequence)
+            current_sequence = tf.where(mask, pattern, current_sequence)
 
         # now we have to pull out the targets
         # hopefully we can do this with some fancy slicing/gathering
@@ -129,11 +129,11 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
             target_positions.append(
                 special_positions[item][num_per_class*item:
                                         num_per_class*(item+1)])
-        target_positions = tf.concat(0, target_positions)
+        target_positions = tf.concat(axis=0, values=target_positions)
         targets = [tf.slice(
             current_sequence, [tpos, i, 0], [1, 1, dimensionality])
-                   for i, tpos in enumerate(tf.unpack(target_positions))]
-        targets = tf.pack([tf.squeeze(target) for target in targets])
+                   for i, tpos in enumerate(tf.unstack(target_positions))]
+        targets = tf.stack([tf.squeeze(target) for target in targets])
     elif task == 'order':
         # the opposite, we need the last one to be a pattern (without primer
         # bits)
@@ -153,22 +153,22 @@ def get_recognition_tensors(batch_size, sequence_length, num_items=1,
                                        num_per_class*(item+1)])
             targets.extend([item] * num_per_class)
         print(targets)
-        target_positions = tf.concat(0, target_positions)
+        target_positions = tf.concat(axis=0, values=target_positions)
         prompts = [tf.slice(
             current_sequence, [tpos, i, 0], [1, 1, dimensionality])
-                   for i, tpos in enumerate(tf.unpack(target_positions))]
+                   for i, tpos in enumerate(tf.unstack(target_positions))]
         stitch_idces = [tf.range(sequence_length-1), sequence_length-1]
-        prompts = tf.concat(1, prompts)
+        prompts = tf.concat(axis=1, values=prompts)
 
         zeros = tf.zeros([sequence_length-1, batch_size, num_features])
 
         prompts = tf.pad(prompts, [[0, 0], [0, 0], [0, num_items]])
-        prompts = tf.concat(0, [zeros, prompts])
+        prompts = tf.concat(axis=0, values=[zeros, prompts])
 
         prompt_masks = tf.ones([1, batch_size, num_features])
-        prompt_masks = tf.concat(0, [zeros, prompt_masks])
+        prompt_masks = tf.concat(axis=0, values=[zeros, prompt_masks])
         prompt_masks = tf.cast(prompt_masks, tf.bool)
-        current_sequence = tf.select(prompt_masks, prompts, current_sequence)
+        current_sequence = tf.where(prompt_masks, prompts, current_sequence)
 
         targets = tf.constant(targets, dtype=tf.int64)
 
@@ -184,7 +184,7 @@ def zero_inbetween(seq, keep_idcs, num_features):
     batch_range = tf.range(batch_size)
     seqs = []
     for idx in keep_idcs:
-        locations = tf.pack([batch_range, idx])
+        locations = tf.stack([batch_range, idx])
         locations = tf.transpose(locations)
         idx_mask = tf.sparse_to_dense(locations,
                                       [batch_size, seq_len],
@@ -196,8 +196,8 @@ def zero_inbetween(seq, keep_idcs, num_features):
     total_features = seq.get_shape().as_list()[-1]
     if total_features > num_features:
         mask = tf.concat(
-            2,
-            [mask,
+            axis=2,
+            values=[mask,
              tf.ones([seq_len, batch_size, total_features-num_features])])
     return mask * seq
 
@@ -255,10 +255,10 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
     max_start = sequence_length//2
     # slightly easier to deal with each guy separately
     start_range = tf.range(max_start)
-    starts = tf.pack([tf.random_shuffle(start_range)
+    starts = tf.stack([tf.random_shuffle(start_range)
                       for _ in range(batch_size)])
     starts = starts[:, :num_items]
-    starts = tf.unpack(tf.transpose(starts))
+    starts = tf.unstack(tf.transpose(starts))
     # and offsets
     offsets = [tf.random_uniform([batch_size], minval=min_keep_length+1,
                                  maxval=max_keep_length or sequence_length,
@@ -277,9 +277,9 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
         batch_seqs = []
         batch_inputs = []
         batch_targs = []
-        for b_start, b_stop in zip(tf.unpack(start), tf.unpack(stop)):
+        for b_start, b_stop in zip(tf.unstack(start), tf.unstack(stop)):
             seq_idcs = tf.range(b_start, b_stop+1)
-            seq_idcs = tf.pack(
+            seq_idcs = tf.stack(
                 [seq_idcs, tf.ones_like(seq_idcs) * (input_features-i-1)])
             seq_idcs = tf.transpose(seq_idcs)
             label_bits = tf.sparse_to_dense(
@@ -299,26 +299,26 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
             # actually, it's easy, we just need the seq pos on one side and
             # dim_range on the other
             input_idcs = tf.transpose(
-                tf.pack([dim_ones * (b_start+1), dim_range]))
+                tf.stack([dim_ones * (b_start+1), dim_range]))
             b_input = tf.sparse_to_dense(
                 input_idcs, [sequence_length, dimensionality], pattern)
             target_idcs = tf.transpose(
-                tf.pack([dim_ones * (b_stop+1), dim_range]))
+                tf.stack([dim_ones * (b_stop+1), dim_range]))
             b_target = tf.sparse_to_dense(
                 target_idcs, [sequence_length, dimensionality], pattern)
             batch_inputs.append(b_input)
             batch_targs.append(b_target)
 
-        batch_labels = tf.pack(batch_seqs)
+        batch_labels = tf.stack(batch_seqs)
         batch_labels = tf.transpose(batch_labels, [1, 0, 2])
 
-        batch_inputs = tf.pack(batch_inputs)
+        batch_inputs = tf.stack(batch_inputs)
         batch_inputs = tf.transpose(batch_inputs, [1, 0, 2])
         batch_inputs = tf.pad(batch_inputs, [[0, 0], [0, 0], [0, num_items]])
 
         inputs += batch_labels + batch_inputs
 
-        batch_targs = tf.pack(batch_targs)
+        batch_targs = tf.stack(batch_targs)
         batch_targs = tf.transpose(batch_targs, [1, 0, 2])
         targets += batch_targs
 
