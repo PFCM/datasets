@@ -342,6 +342,7 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
             inputs = tf.where(presence, flat_batch_inputs, flat_inputs)
             inputs = tf.reshape(inputs,
                                 [sequence_length, batch_size, input_features])
+            inputs += batch_labels
         else:
             inputs += batch_labels + batch_inputs
 
