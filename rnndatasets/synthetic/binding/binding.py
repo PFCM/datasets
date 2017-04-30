@@ -205,7 +205,8 @@ def zero_inbetween(seq, keep_idcs, num_features):
 def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
                                    dimensionality=8,
                                    real_patterns=False, min_keep_length=1,
-                                   max_keep_length=None):
+                                   max_keep_length=None,
+                                   inbetween_noise=False):
     """Round 2.
 
     Sequences are pretty much all zeros. There are `sequence_length` timesteps.
@@ -249,7 +250,17 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
     """
     # we can do this by making sequences of zeros and adding to them.
     input_features = num_items + dimensionality
-    inputs = tf.zeros([sequence_length, batch_size, input_features])
+    if inbetween_noise:
+        inputs = tf.round(tf.random_uniform([sequence_length,
+                                             batch_size,
+                                             dimensionality]))
+        inputs = tf.concat([inputs,
+                            tf.zeros([sequence_length,
+                                      batch_size,
+                                      num_items])],
+                           2)
+    else:
+        inputs = tf.zeros([sequence_length, batch_size, input_features])
     targets = tf.zeros([sequence_length, batch_size, dimensionality])
     # we need to choose some positions
     max_start = sequence_length//2
@@ -289,9 +300,12 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
             # and let's make a pattern
             # probably it would be faster to do this a whole batch at a time
             # but my brain hurts already
-            pattern = tf.random_uniform([dimensionality])
-            if not real_patterns:
-                pattern = tf.round(pattern)
+            if not inbetween_noise:
+                pattern = tf.random_uniform([dimensionality])
+                if not real_patterns:
+                    pattern = tf.round(pattern)
+            else:
+                pattern = inputs[b_start+1, i, :dimensionality]
             # now make two `[sequence_length, dimensionality]` with the pattern
             # in the right place for input and target
             # this should mean some careful construction of indices and two
@@ -302,6 +316,7 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
                 tf.stack([dim_ones * (b_start+1), dim_range]))
             b_input = tf.sparse_to_dense(
                 input_idcs, [sequence_length, dimensionality], pattern)
+
             target_idcs = tf.transpose(
                 tf.stack([dim_ones * (b_stop+1), dim_range]))
             b_target = tf.sparse_to_dense(
@@ -316,7 +331,19 @@ def get_continuous_binding_tensors(batch_size, sequence_length, num_items=2,
         batch_inputs = tf.transpose(batch_inputs, [1, 0, 2])
         batch_inputs = tf.pad(batch_inputs, [[0, 0], [0, 0], [0, num_items]])
 
-        inputs += batch_labels + batch_inputs
+        if inbetween_noise:
+            presence = tf.reduce_any(tf.cast(batch_inputs, tf.bool),
+                                     axis=2)
+            presence = tf.reshape(presence, [-1])
+            flat_batch_inputs = tf.reshape(batch_inputs,
+                                           [-1, input_features])
+            flat_inputs = tf.reshape(inputs,
+                                     [-1, input_features])
+            inputs = tf.where(presence, flat_batch_inputs, flat_inputs)
+            inputs = tf.reshape(inputs,
+                                [sequence_length, batch_size, input_features])
+        else:
+            inputs += batch_labels + batch_inputs
 
         batch_targs = tf.stack(batch_targs)
         batch_targs = tf.transpose(batch_targs, [1, 0, 2])
